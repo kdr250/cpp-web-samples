@@ -1,11 +1,11 @@
 #include "RestController.h"
 
-void RestController::asyncHandleHttpRequest(const HttpRequestPtr& req,
-                                            std::function<void(const HttpResponsePtr&)>&& callback)
+void api::v1::Test::Index(const HttpRequestPtr& req,
+                          std::function<void(const HttpResponsePtr&)>&& callback) const
 {
     // write your application logic here
-    auto response = HttpResponse::newHttpResponse();
-    response->setBody("<p>Hello, World!</p>");
-    response->setExpiredTime(0);
+    Json::Value result;
+    result["message"] = "Hello, World!";
+    auto response     = HttpResponse::newHttpJsonResponse(result);
     callback(response);
 }
