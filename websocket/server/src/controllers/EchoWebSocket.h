@@ -20,4 +20,7 @@ public:
     // list path definitions here
     WS_PATH_ADD("/echo");
     WS_PATH_LIST_END
+
+private:
+    std::vector<WebSocketConnectionPtr> connections;
 };
