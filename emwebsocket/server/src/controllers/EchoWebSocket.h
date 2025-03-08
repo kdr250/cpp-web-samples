@@ -1,5 +1,6 @@
 #pragma once
 
+#include <drogon/PubSubService.h>
 #include <drogon/WebSocketController.h>
 
 using namespace drogon;
@@ -18,9 +19,14 @@ public:
 
     WS_PATH_LIST_BEGIN
     // list path definitions here
-    WS_PATH_ADD("/echo");
+    WS_PATH_ADD("/echo", Get);
     WS_PATH_LIST_END
 
 private:
-    std::vector<WebSocketConnectionPtr> connections;
+    PubSubService<std::string> channels;
+};
+
+struct Subscriber
+{
+    drogon::SubscriberID id;
 };
