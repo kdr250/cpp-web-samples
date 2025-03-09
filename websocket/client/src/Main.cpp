@@ -12,7 +12,7 @@ int main()
     ix::WebSocket webSocket;
 
     // Connecto to a server
-    std::string url("http://localhost:8000/echo");
+    std::string url("ws://localhost:8000/echo");
     webSocket.setUrl(url);
 
     // Setup a callback fired when a message or an event (open, close, error) is received
