@@ -1,55 +1,86 @@
-#include <mongoose.h>
+#include <drogon/HttpAppFramework.h>
+#include <drogon/WebSocketClient.h>
+#include <iostream>
 
-constexpr const char *URL = "ws://localhost:8000/echo";
+using namespace drogon;
+using namespace std::chrono_literals;
 
-// Print websocket response and signal that we're done
-static void Handle(struct mg_connection *client, int event, void *eventData)
+int main()
 {
-    if (event == MG_EV_OPEN)
-    {
-        client->is_hexdumping = 1;
-    }
-    else if (event == MG_EV_ERROR)
-    {
-        // On error, log error message
-        MG_ERROR(("%p %s", client->fd, (char *)eventData));
-    }
-    else if (event == MG_EV_WS_OPEN)
-    {
-        // When websocket handshake is successful, send message
-        mg_ws_send(client, "hello", 5, WEBSOCKET_OP_TEXT);
-    }
-    else if (event == MG_EV_WS_MSG)
-    {
-        // When we get echo response, print it
-        struct mg_ws_message *wm = (struct mg_ws_message *)eventData;
-        printf("GOT ECHO REPLY: [%.*s]\n", (int)wm->data.len, wm->data.buf);
-    }
+    auto websocketPtr = WebSocketClient::newWebSocketClient("ws://localhost:8000");
 
-    if (event == MG_EV_ERROR || event == MG_EV_CLOSE || event == MG_EV_WS_MSG)
-    {
-        *(bool *)client->fn_data = true;  // Signal that we're done
-    }
-}
+    auto request = HttpRequest::newHttpRequest();
+    request->setPath("/echo");
 
-int main(int argc, char *argv[])
-{
-    struct mg_mgr eventManager;    // Event manager
-    bool done = false;             // Event handler flips it to true
-    struct mg_connection *client;  // Client connection
+    websocketPtr->setMessageHandler(
+        [](const std::string& message,
+           const WebSocketClientPtr& clientPtr,
+           const WebSocketMessageType& type)
+        {
+            std::string messageType;
+            switch (type)
+            {
+                case WebSocketMessageType::Text:
+                    messageType = "text";
+                    break;
 
-    mg_mgr_init(&eventManager);  // Initialise event manager
+                case WebSocketMessageType::Pong:
+                    messageType = "pong";
+                    break;
 
-    mg_log_set(MG_LL_DEBUG);  // Set log level
+                case WebSocketMessageType::Ping:
+                    messageType = "ping";
+                    break;
 
-    client = mg_ws_connect(&eventManager, URL, Handle, &done, NULL);  // Create client
+                case WebSocketMessageType::Binary:
+                    messageType = "binary";
+                    break;
 
-    while (client && !done)
-    {
-        mg_mgr_poll(&eventManager, 1000);  // Wait for echo
-    }
+                case WebSocketMessageType::Close:
+                    messageType = "close";
+                    break;
 
-    mg_mgr_free(&eventManager);  // Deallocate resources
+                default:
+                    messageType = "Unknown";
+                    break;
+            }
 
-    return 0;
+            LOG_INFO << "new message (" << messageType << "): " << message;
+        });
+
+    websocketPtr->setConnectionClosedHandler(
+        [](const WebSocketClientPtr& clientPtr)
+        {
+            LOG_INFO << "WebSocket connection closed!";
+        });
+
+    LOG_INFO << "Connecting to WebSocket!";
+
+    websocketPtr->connectToServer(
+        request,
+        [](ReqResult result, const HttpResponsePtr& response, const WebSocketClientPtr& clientPtr)
+        {
+            if (result != ReqResult::Ok)
+            {
+                LOG_ERROR << "Failed to establish WebSocket connection!";
+                clientPtr->stop();
+                return;
+            }
+            LOG_INFO << "WebSocket connected!";
+            clientPtr->getConnection()->setPingMessage("", 2s);
+            clientPtr->getConnection()->send("Hello World!");
+        });
+
+    // Quit the application after 15 seconds
+    app().getLoop()->runAfter(15,
+                              []()
+                              {
+                                  app().quit();
+                              });
+
+    app().setLogLevel(trantor::Logger::kDebug);
+    app().run();
+    LOG_INFO << "Finish!";
+
+    return EXIT_SUCCESS;
 }

@@ -7,7 +7,7 @@ endif()
 
 project(main VERSION 1.0)
 
-find_package(unofficial-mongoose CONFIG REQUIRED)
+find_package(Drogon CONFIG REQUIRED)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
@@ -25,7 +25,7 @@ add_executable(
 
 target_link_libraries(
     main PRIVATE
-    unofficial::mongoose::mongoose
+    Drogon::Drogon
 )
 
 add_custom_command(
