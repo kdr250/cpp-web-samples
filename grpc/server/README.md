@@ -1,1 +1,1 @@
-# C++で Rest API にアクセスするサンプル
+# gRPC Server
