@@ -1,86 +1,58 @@
-#include <drogon/HttpAppFramework.h>
-#include <drogon/WebSocketClient.h>
+#include <IXNetSystem.h>
+#include <IXUserAgent.h>
+#include <IXWebSocket.h>
 #include <iostream>
-
-using namespace drogon;
-using namespace std::chrono_literals;
 
 int main()
 {
-    auto websocketPtr = WebSocketClient::newWebSocketClient("ws://localhost:8000");
+    // Required on Windows
+    ix::initNetSystem();
 
-    auto request = HttpRequest::newHttpRequest();
-    request->setPath("/echo");
+    // websockt object
+    ix::WebSocket webSocket;
 
-    websocketPtr->setMessageHandler(
-        [](const std::string& message,
-           const WebSocketClientPtr& clientPtr,
-           const WebSocketMessageType& type)
+    // Connecto to a server
+    std::string url("ws://localhost:8000/echo");
+    webSocket.setUrl(url);
+
+    // Setup a callback fired when a message or an event (open, close, error) is received
+    webSocket.setOnMessageCallback(
+        [](const ix::WebSocketMessagePtr& message)
         {
-            std::string messageType;
-            switch (type)
+            switch (message->type)
             {
-                case WebSocketMessageType::Text:
-                    messageType = "text";
+                case ix::WebSocketMessageType::Message:
+                    std::cout << "received message: " << message->str << std::endl;
+                    std::cout << "> " << std::flush;
                     break;
 
-                case WebSocketMessageType::Pong:
-                    messageType = "pong";
+                case ix::WebSocketMessageType::Open:
+                    std::cout << "Connection established" << std::endl;
+                    std::cout << "> " << std::flush;
                     break;
 
-                case WebSocketMessageType::Ping:
-                    messageType = "ping";
-                    break;
-
-                case WebSocketMessageType::Binary:
-                    messageType = "binary";
-                    break;
-
-                case WebSocketMessageType::Close:
-                    messageType = "close";
+                case ix::WebSocketMessageType::Error:
+                    std::cout << "Connection error: " << message->str << std::endl;
+                    std::cout << "> " << std::flush;
                     break;
 
                 default:
-                    messageType = "Unknown";
                     break;
             }
-
-            LOG_INFO << "new message (" << messageType << "): " << message;
         });
 
-    websocketPtr->setConnectionClosedHandler(
-        [](const WebSocketClientPtr& clientPtr)
-        {
-            LOG_INFO << "WebSocket connection closed!";
-        });
+    webSocket.start();
 
-    LOG_INFO << "Connecting to WebSocket!";
+    webSocket.send("Hello World!");
 
-    websocketPtr->connectToServer(
-        request,
-        [](ReqResult result, const HttpResponsePtr& response, const WebSocketClientPtr& clientPtr)
-        {
-            if (result != ReqResult::Ok)
-            {
-                LOG_ERROR << "Failed to establish WebSocket connection!";
-                clientPtr->stop();
-                return;
-            }
-            LOG_INFO << "WebSocket connected!";
-            clientPtr->getConnection()->setPingMessage("", 2s);
-            clientPtr->getConnection()->send("Hello World!");
-        });
+    std::cout << "> " << std::flush;
 
-    // Quit the application after 15 seconds
-    app().getLoop()->runAfter(15,
-                              []()
-                              {
-                                  app().quit();
-                              });
-
-    app().setLogLevel(trantor::Logger::kDebug);
-    app().run();
-    LOG_INFO << "Finish!";
+    std::string text;
+    while (std::getline(std::cin, text))
+    {
+        webSocket.send(text);
+        std::cout << "> " << std::flush;
+    }
 
     return EXIT_SUCCESS;
 }
