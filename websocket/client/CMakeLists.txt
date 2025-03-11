@@ -23,6 +23,10 @@ add_executable(
     ${SOURCES}
 )
 
+if(WIN32)
+    set(CMAKE_CXX_FLAGS "-l bcrypt")
+endif(WIN32)
+
 target_link_libraries(
     main PRIVATE
     ixwebsocket::ixwebsocket
